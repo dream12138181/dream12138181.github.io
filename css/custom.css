@@ -65,7 +65,7 @@ html {
 
 html,
 body {
-  cursor: url('/cursor/default.cur'), auto;
+  cursor: url('/cursor/default.cur?v=2'), auto;
 }
 
 a,
@@ -77,7 +77,7 @@ label,
 summary,
 [role='button'],
 [onclick] {
-  cursor: url('/cursor/pointer.cur'), pointer;
+  cursor: url('/cursor/pointer.cur?v=2'), pointer;
 }
 
 body {
