@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="根据词语的关联度提示，找到隐藏的中文词语。">
+  <title>随机猜词 · 词语实验室</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237c3aed'/%3E%3Cpath d='M7 16h18M16 7v18' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+  <style>
+    /* 沿用博客的紫蓝色系，使用系统字体和本地配色。 */
+    :root {
+      color-scheme: light dark;
+      --ink: #302447;
+      --muted: #615776;
+      --accent: #6831c1;
+      --button: #6d28d9;
+      --button-hover: #5820b4;
+      --surface: #fff;
+      --soft: #f3edfd;
+      --line: #d7cce9;
+      --field-line: #8b7ca4;
+      --error: #a3224a;
+      --shadow: 0 14px 38px #4c1d9517;
+      --backdrop: linear-gradient(135deg, #f5f3ff, #eef2ff 55%, #ecfeff);
+      --hero: linear-gradient(118deg, #4c1d95, #652dc5 64%, #3e3da4);
+      --cold: #3e56a1;
+      --cool: #166380;
+      --warm: #805008;
+      --hot: #9a3618;
+      --close: #9c2358;
+      --win: #17634b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #f3edff;
+        --muted: #c0b6d2;
+        --accent: #cfb0ff;
+        --surface: #201932;
+        --soft: #2c2144;
+        --line: #493b60;
+        --field-line: #a99abf;
+        --error: #ffadc5;
+        --shadow: 0 14px 38px #07040e45;
+        --backdrop: linear-gradient(135deg, #0f0a1a, #16132a 55%, #101f32);
+        --cold: #b8c7ff;
+        --cool: #91ddf5;
+        --warm: #ffd285;
+        --hot: #ffb198;
+        --close: #ffaed3;
+        --win: #91e6bf;
+      }
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--backdrop);
+      color: var(--ink);
+      font: 1rem/1.6 "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    main { width: min(100% - 2rem, 62rem); margin: auto; padding: clamp(1.25rem, 5vw, 4rem) 0; }
+    h1, h2, p, dl { margin: 0; }
+    h2 { font-size: 1.2rem; }
+    button, input { font: inherit; }
+    button, summary { cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(1.3rem, 5vw, 2.75rem);
+      border-radius: 1.5rem;
+      background: var(--hero);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: -6rem -7rem auto auto;
+      width: 22rem;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: repeating-radial-gradient(transparent 0 23px, #fff3 24px 25px);
+      opacity: .5;
+      pointer-events: none;
+    }
+    .hero > * { position: relative; z-index: 1; }
+    .eyebrow { font-size: .8rem; font-weight: 700; letter-spacing: .14em; }
+    h1 { font-size: clamp(2rem, 6vw, 3.5rem); line-height: 1.25; margin: .35rem 0 .6rem; }
+    .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 9rem)); gap: .65rem; margin-top: 1.4rem; }
+    .stats div { background: #18074455; border: 1px solid #fff5; padding: .6rem .85rem; border-radius: .75rem; }
+    .stats dt { font-size: .8rem; }
+    .stats dd { margin: 0; font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .board { display: grid; grid-template-columns: 1.15fr 1fr; align-items: start; gap: 1rem; margin-top: 1rem; }
+    .panel {
+      min-width: 0;
+      padding: clamp(1rem, 3vw, 1.5rem);
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    label { display: block; margin: 1rem 0 .35rem; font-weight: 700; }
+    .controls { display: flex; gap: .55rem; }
+    input {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--field-line);
+      border-radius: .65rem;
+      padding: .55rem .7rem;
+      background: var(--surface);
+      color: var(--ink);
+    }
+    button {
+      min-height: 2.75rem;
+      padding: .45rem .8rem;
+      border: 1px solid transparent;
+      border-radius: .65rem;
+      background: var(--button);
+      color: white;
+      font-weight: 700;
+      transition: background-color .18s, transform .18s;
+    }
+    button:hover:enabled { background: var(--button-hover); }
+    button:active:enabled { transform: translateY(1px); }
+    button:disabled, input:disabled { opacity: .65; cursor: default; }
+    .secondary { background: var(--surface); border-color: var(--field-line); color: var(--accent); }
+    .secondary:hover:enabled { background: var(--soft); }
+    .muted { color: var(--muted); }
+    .status { min-height: 1.6em; margin: .55rem 0; overflow-wrap: anywhere; }
+    .status.error { color: var(--error); }
+    #model-status { margin-top: .65rem; font-size: .85rem; }
+    .result, .victory { margin-top: 1rem; padding: .9rem; border-radius: .8rem; background: var(--soft); }
+    .result-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: .45rem; }
+    #latest-word { overflow-wrap: anywhere; }
+    .score { font-size: 1.75rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .level, .score, .history-score { color: var(--tone, var(--accent)); }
+    .meter { height: .65rem; margin: .5rem 0; border-radius: 1rem; background: var(--line); overflow: hidden; }
+    .meter > span {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--tone, var(--accent));
+      transform: scaleX(var(--fraction, 0));
+      transform-origin: left;
+      transition: transform .35s ease-out;
+    }
+    .victory { border: 1px solid var(--win); }
+    .victory h2 { color: var(--win); }
+    #new-round { margin-top: 1rem; }
+    .history { padding: 0; margin: .65rem 0 0; list-style: none; }
+    .history li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: .75rem;
+      padding: .65rem .25rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .history li.winner { background: var(--soft); border-radius: .55rem; padding-inline: .55rem; }
+    .history li:first-child, .victory { animation: appear .22s ease-out; }
+    .history-word { overflow-wrap: anywhere; }
+    .history-score { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .empty { margin-top: .7rem; }
+    details { margin-top: 1rem; }
+    summary { color: var(--accent); min-height: 2.75rem; padding-block: .5rem; }
+    @keyframes appear {
+      from { opacity: 0; transform: translateY(.2rem); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 43rem) { .board { grid-template-columns: minmax(0, 1fr); } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <p class="eyebrow">词语实验室</p>
+      <h1>随机猜词</h1>
+      <p>从一个常用词出发，沿着关联度寻找隐藏答案。</p>
+      <dl class="stats">
+        <div><dt>本局猜测</dt><dd id="attempts">0 次</dd></div>
+        <div><dt>本地最佳</dt><dd id="best">暂无</dd></div>
+      </dl>
+    </header>
+
+    <noscript><p class="panel">请在浏览器中启用 JavaScript 后开始游戏。</p></noscript>
+    <div class="board">
+      <section class="panel" aria-labelledby="play-heading">
+        <h2 id="play-heading">猜一个词</h2>
+        <form id="guess-form">
+          <label for="guess">你的猜测</label>
+          <div class="controls">
+            <input id="guess" type="text" maxlength="64" autocomplete="off" spellcheck="false" aria-describedby="examples">
+            <button id="submit" type="submit">提交猜测</button>
+          </div>
+          <p id="status" class="status muted" role="status" aria-atomic="true"></p>
+        </form>
+        <p id="model-status" class="muted">首次评分会载入本地语义模型及运行库，约 47 MB。</p>
+        <div id="result" class="result" hidden>
+          <div class="result-line">
+            <strong id="latest-word"></strong>
+            <span id="score" class="score"></span>
+            <span id="level" class="level"></span>
+          </div>
+          <div id="meter" class="meter" role="progressbar" aria-label="最近一次关联度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+          <p id="guidance"></p>
+        </div>
+        <section id="victory" class="victory" aria-labelledby="victory-heading" tabindex="-1" hidden>
+          <h2 id="victory-heading">猜中了！</h2>
+          <p id="answer"></p>
+        </section>
+        <button id="new-round" class="secondary" type="button">换一个词</button>
+        <details>
+          <summary>玩法与示例</summary>
+          <p id="examples" class="muted">每次输入一个词或短语，例如「灌篮」或「宠物医院」。分数越高，表示词义或使用场景越接近。只有猜中才得 100 分。</p>
+        </details>
+      </section>
+      <section class="panel" aria-labelledby="history-heading">
+        <h2 id="history-heading">猜测历史</h2>
+        <p class="muted">最近的猜测排在最上方。</p>
+        <p id="empty-history" class="empty muted">提交一个词后，这里会显示猜测记录。</p>
+        <ol id="history" class="history" reversed role="list"></ol>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // 词库按类别分组，每项为 [标准词, 以空格分隔的语义标签]。
+      // 扩充时同步检查别名及人工校准表中的词名。
+      const groups = {
+        运动: [
+          ['篮球', '运动 球类 团队 球场 投篮'],
+          ['足球', '运动 球类 团队 球场 射门'],
+          ['羽毛球', '运动 球类 球拍 隔网 室内'],
+          ['乒乓球', '运动 球类 球拍 隔网 室内 球桌'],
+          ['跑步', '运动 健身 户外 耐力'],
+          ['游泳', '运动 健身 水上 耐力'],
+          ['跳绳', '运动 健身 耐力 跳跃'],
+          ['瑜伽', '运动 健身 室内 拉伸'],
+          ['网球', '运动 球类 球拍 隔网 球场'],
+          ['滑冰', '运动 平衡 冬季 冰面']
+        ],
+        水果: [
+          ['苹果', '食物 水果 果树 脆 甜'],
+          ['香蕉', '食物 水果 热带 软 甜 剥皮'],
+          ['梨', '食物 水果 果树 脆 多汁 甜'],
+          ['桃子', '食物 水果 果树 多汁 果核 甜'],
+          ['葡萄', '食物 水果 成串 多汁 甜'],
+          ['草莓', '食物 水果 浆果 红色 酸甜'],
+          ['西瓜', '食物 水果 夏季 多汁 甜'],
+          ['橙子', '食物 水果 柑橘 多汁 酸甜 剥皮'],
+          ['柠檬', '食物 水果 柑橘 多汁 酸 调味'],
+          ['菠萝', '食物 水果 热带 酸甜 去皮']
+        ],
+        食材: [
+          ['番茄', '食物 蔬菜 多汁 红色 酸甜'],
+          ['黄瓜', '食物 蔬菜 多汁 脆 凉拌'],
+          ['土豆', '食物 蔬菜 根茎 淀粉'],
+          ['胡萝卜', '食物 蔬菜 根茎 脆'],
+          ['鸡蛋', '食物 蛋白质 早餐 煎煮'],
+          ['牛奶', '食物 蛋白质 早餐 饮品'],
+          ['豆腐', '食物 蛋白质 豆类 软'],
+          ['米饭', '食物 主食 谷物 蒸煮'],
+          ['面条', '食物 主食 小麦 蒸煮'],
+          ['面包', '食物 主食 小麦 早餐 烘焙']
+        ],
+        动物: [
+          ['猫', '动物 哺乳 宠物 四足'],
+          ['狗', '动物 哺乳 宠物 四足'],
+          ['兔子', '动物 哺乳 宠物 四足 草食 跳跃'],
+          ['熊猫', '动物 哺乳 野生 四足 草食 森林'],
+          ['老虎', '动物 哺乳 野生 四足 肉食 森林'],
+          ['大象', '动物 哺乳 野生 四足 草食'],
+          ['金鱼', '动物 水生 宠物 鱼类'],
+          ['海豚', '动物 哺乳 野生 水生 海洋'],
+          ['企鹅', '动物 鸟类 野生 海洋 寒冷'],
+          ['麻雀', '动物 鸟类 野生 飞行']
+        ],
+        出行: [
+          ['自行车', '交通 两轮 户外 人力'],
+          ['摩托车', '交通 两轮 道路 机动'],
+          ['公交车', '交通 公共交通 道路 通勤'],
+          ['地铁', '交通 公共交通 轨道 通勤'],
+          ['火车', '交通 公共交通 轨道 长途'],
+          ['高铁', '交通 公共交通 轨道 长途 高速'],
+          ['飞机', '交通 公共交通 长途 飞行'],
+          ['轮船', '交通 公共交通 长途 水上'],
+          ['出租车', '交通 道路 载客 机动'],
+          ['电动车', '交通 两轮 道路 机动 电池']
+        ],
+        地点: [
+          ['学校', '地点 教育 学习 室内'],
+          ['图书馆', '地点 教育 学习 阅读 室内'],
+          ['医院', '地点 医疗 健康 室内'],
+          ['超市', '地点 商业 购物 食物 室内'],
+          ['公园', '地点 休闲 户外 绿植'],
+          ['银行', '地点 商业 金融 室内'],
+          ['机场', '地点 交通 出发 旅行 飞行'],
+          ['车站', '地点 交通 出发 旅行'],
+          ['电影院', '地点 休闲 影视 室内'],
+          ['餐厅', '地点 商业 食物 用餐 室内']
+        ],
+        职业: [
+          ['老师', '职业 教育 学习 授课'],
+          ['医生', '职业 医疗 健康 诊治'],
+          ['护士', '职业 医疗 健康 照护'],
+          ['厨师', '职业 食物 烹饪 用餐'],
+          ['司机', '职业 交通 驾驶 道路'],
+          ['警察', '职业 公共服务 安全 应急'],
+          ['消防员', '职业 公共服务 安全 应急 救援'],
+          ['快递员', '职业 配送 道路 商业'],
+          ['农民', '职业 农业 户外 食物'],
+          ['画家', '职业 艺术 绘画 创作']
+        ],
+        自然: [
+          ['太阳', '自然 天空 天体 光 白天'],
+          ['月亮', '自然 天空 天体 光 夜晚'],
+          ['星星', '自然 天空 天体 光 夜晚'],
+          ['彩虹', '自然 天空 光 雨后 色彩'],
+          ['云朵', '自然 天空 天气 水汽'],
+          ['大雨', '自然 天气 降水 水汽'],
+          ['雪花', '自然 天气 降水 冬季 寒冷'],
+          ['雷电', '自然 天空 天气 光 暴雨'],
+          ['大海', '自然 海洋 水 户外'],
+          ['森林', '自然 森林 绿植 户外']
+        ],
+        家居: [
+          ['冰箱', '家居 家电 制冷 保鲜'],
+          ['洗衣机', '家居 家电 清洁 衣物'],
+          ['空调', '家居 家电 制冷 温度'],
+          ['电视', '家居 家电 屏幕 影视'],
+          ['电脑', '家居 电子设备 屏幕 游戏 办公'],
+          ['台灯', '家居 光 照明 办公'],
+          ['沙发', '家居 家具 休息 坐具'],
+          ['床', '家居 家具 休息 睡眠'],
+          ['书桌', '家居 家具 办公 学习'],
+          ['镜子', '家居 反射 光 梳妆']
+        ],
+        文娱: [
+          ['电影', '文娱 影视 故事 创作'],
+          ['小说', '文娱 阅读 故事 创作'],
+          ['漫画', '文娱 阅读 故事 绘画 创作'],
+          ['音乐', '文娱 艺术 节奏 演奏'],
+          ['舞蹈', '文娱 艺术 节奏 表演'],
+          ['摄影', '文娱 艺术 创作 影像'],
+          ['游戏', '文娱 休闲 互动 屏幕'],
+          ['吉他', '文娱 艺术 演奏 乐器 弦乐'],
+          ['钢琴', '文娱 艺术 演奏 乐器 键盘'],
+          ['画笔', '文娱 艺术 绘画 创作']
+        ]
+      };
+      const aliases = new Map([
+        ['西红柿', '番茄'], ['马铃薯', '土豆'], ['单车', '自行车'],
+        ['的士', '出租车'], ['巴士', '公交车'], ['电视机', '电视'],
+        ['大熊猫', '熊猫'], ['照相', '摄影'], ['凤梨', '菠萝']
+      ]);
+      const calibrated = [
+        ['篮球', '足球', 86], ['医生', '护士', 93], ['医生', '医院', 91],
+        ['高铁', '火车', 92], ['电影', '电影院', 90], ['番茄', '黄瓜', 84],
+        ['梨', '苹果', 84], ['吉他', '钢琴', 87], ['猫', '狗', 85]
+      ];
+      const words = Object.entries(groups).flatMap(([category, rows]) =>
+        rows.map(([word, tags]) => ({ word, category, tags: new Set(tags.split(' ')) }))
+      );
+      const wordIds = new Map(words.map(({ word }, id) => [word, id]));
+
+      // 模型不可用时，用内置标签分数维持基本玩法。
+      function buildScoreTable() {
+        const table = words.map(() => new Uint8Array(words.length));
+        for (const [i, left] of words.entries()) {
+          table[i][i] = 100;
+          for (let j = i + 1; j < words.length; j++) {
+            const right = words[j];
+            const overlap = [...left.tags].filter(tag => right.tags.has(tag)).length;
+            const total = left.tags.size + right.tags.size - overlap;
+            const categoryScore = left.category === right.category ? 25 : 0;
+            table[i][j] = table[j][i] = Math.round(categoryScore + 70 * overlap / total);
+          }
+        }
+        for (const [first, second, score] of calibrated) {
+          const i = wordIds.get(first);
+          const j = wordIds.get(second);
+          if (i !== undefined && j !== undefined && i !== j) {
+            table[i][j] = table[j][i] = Math.min(99, Math.max(0, score));
+          }
+        }
+        return table;
+      }
+      const scores = buildScoreTable();
+      const levels = [
+        ['极低', 'cold', '离得比较远，试试另一个方向。'],
+        ['低', 'cool', '有一点联系，可以换个相关场景试试。'],
+        ['中', 'warm', '找到一些联系了，试试同类或同场景的词。'],
+        ['高', 'hot', '方向很接近，试试这个方向里更具体的词。'],
+        ['极高', 'close', '非常接近，再想一个常一起出现的词。'],
+        ['猜中', 'win', '已经找到目标词。']
+      ];
+
+      const get = id => document.getElementById(id);
+      const form = get('guess-form');
+      const input = get('guess');
+      const submit = get('submit');
+      const status = get('status');
+      const modelStatus = get('model-status');
+      const result = get('result');
+      const meter = get('meter');
+      const history = get('history');
+      const victory = get('victory');
+      const bestKey = 'hexo-random-word-game.best.v1';
+      let round;
+      let composing = false;
+      let semanticWorker;
+      let modelReady = false;
+      let modelUnavailable = location.protocol === 'file:' || typeof Worker === 'undefined';
+      let requestId = 0;
+
+      // 浏览器拒绝存储或旧值无效时，保留内存里的成绩。
+      function readBest() {
+        try {
+          const value = Number(localStorage.getItem(bestKey));
+          return Number.isSafeInteger(value) && value > 0 ? value : Infinity;
+        } catch {
+          return Infinity;
+        }
+      }
+      let best = readBest();
+
+      function showBest() {
+        get('best').textContent = Number.isFinite(best) ? `${best} 次` : '暂无';
+      }
+
+      function recordWin(attempts) {
+        const saved = readBest();
+        best = Math.min(attempts, best, saved);
+        if (best < saved) {
+          try {
+            localStorage.setItem(bestKey, String(best));
+          } catch {
+            // 当前页面内仍显示已更新的纪录。
+          }
+        }
+        showBest();
+      }
+
+      function announce(message, error = false) {
+        status.textContent = message;
+        status.classList.toggle('error', error);
+      }
+
+      function useFallback(guess) {
+        const id = wordIds.get(aliases.get(guess) ?? guess);
+        if (id === undefined) {
+          acceptGuess(guess, 0, '内置词库缺少这个词的线索。', '线索不足');
+        } else {
+          acceptGuess(guess, Math.min(99, scores[round.target][id]), '内置标签估分。');
+        }
+      }
+
+      function modelFailed() {
+        semanticWorker?.terminate();
+        semanticWorker = undefined;
+        modelReady = false;
+        modelUnavailable = true;
+        modelStatus.textContent = '模型未能载入，当前使用内置估分。重新打开页面可重试。';
+        if (round.pending) useFallback(round.pending.guess);
+      }
+
+      function requestScore(guess) {
+        round.pending = { id: ++requestId, guess };
+        input.disabled = submit.disabled = true;
+        announce(modelReady ? '正在比较词义…' : '正在载入语义模型，首次评分需要一些时间…');
+        try {
+          if (!semanticWorker) {
+            semanticWorker = new Worker(new URL('./assets/semantic-worker.mjs', location.href), { type: 'module' });
+            semanticWorker.addEventListener('error', modelFailed);
+            semanticWorker.addEventListener('message', ({ data }) => {
+              if (data.type === 'ready') {
+                modelReady = true;
+                modelStatus.textContent = '本地语义模型已就绪，可断网继续玩。';
+                if (round.pending) announce('正在比较词义…');
+              } else if (data.type === 'unavailable') {
+                modelFailed();
+              } else if (round.pending?.id === data.id) {
+                if (data.type === 'score') {
+                  acceptGuess(round.pending.guess, data.score, '本地模型语义估分。');
+                } else {
+                  useFallback(round.pending.guess);
+                }
+              }
+            });
+          }
+          semanticWorker.postMessage({ id: requestId, guess, target: words[round.target].word });
+        } catch {
+          modelFailed();
+        }
+      }
+
+      function startRound() {
+        const previous = round?.target;
+        let target = Math.floor(Math.random() * (words.length - Number(previous !== undefined)));
+        if (previous !== undefined && target >= previous) target++;
+        round = { target, guessed: new Set(), won: false, pending: undefined };
+        composing = false;
+        input.disabled = submit.disabled = false;
+        input.value = '';
+        get('attempts').textContent = '0 次';
+        history.replaceChildren();
+        get('empty-history').hidden = false;
+        result.hidden = victory.hidden = true;
+        get('answer').textContent = '';
+        get('latest-word').textContent = '';
+        get('score').textContent = '';
+        get('level').textContent = '';
+        get('guidance').textContent = '';
+        meter.setAttribute('aria-valuenow', '0');
+        meter.style.setProperty('--fraction', '0');
+        announce('新一局开始了。');
+      }
+
+      function acceptGuess(word, score, source = '', customLevel) {
+        round.pending = undefined;
+        round.guessed.add(word);
+        const attempts = round.guessed.size;
+        const [level, tone, guidance] = levels[Math.floor(score / 20)];
+        const label = customLevel ?? level;
+        const toneValue = `var(--${tone})`;
+        round.won = score === 100;
+
+        get('attempts').textContent = `${attempts} 次`;
+        get('latest-word').textContent = word;
+        get('score').textContent = `${score}%`;
+        get('level').textContent = label;
+        get('guidance').textContent = customLevel ? source : `${guidance}${source}`;
+        result.style.setProperty('--tone', toneValue);
+        meter.style.setProperty('--fraction', score / 100);
+        meter.setAttribute('aria-valuenow', String(score));
+        result.hidden = false;
+
+        // 用 textContent 写入词语和提示，避免将输入解释成 HTML。
+        const item = document.createElement('li');
+        item.style.setProperty('--tone', toneValue);
+        item.classList.toggle('winner', round.won);
+        for (const [className, value] of [
+          ['history-word', word], ['history-score', `${score}%`], ['level', label]
+        ]) {
+          const field = document.createElement('span');
+          field.className = className;
+          field.textContent = value;
+          item.append(field);
+        }
+        history.prepend(item);
+        get('empty-history').hidden = true;
+
+        input.value = '';
+        announce(`${word}，关联度 ${score}%，${label}。`);
+        input.disabled = submit.disabled = round.won;
+        if (round.won) {
+          recordWin(attempts);
+          get('answer').textContent = `答案是「${word}」，你用了 ${attempts} 次。`;
+          victory.hidden = false;
+          victory.focus();
+        } else {
+          input.focus();
+        }
+      }
+
+      input.addEventListener('compositionstart', () => { composing = true; });
+      input.addEventListener('compositionend', () => { composing = false; });
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && (composing || event.isComposing || event.keyCode === 229)) {
+          event.preventDefault();
+        }
+      });
+      input.addEventListener('input', () => {
+        announce('');
+      });
+
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        if (round.won || round.pending || composing) return;
+        const guess = input.value.normalize('NFKC').trim();
+        if (!guess) {
+          announce('请先输入一个词。', true);
+          input.focus();
+          return;
+        }
+        if (round.guessed.has(guess)) {
+          announce('这个词已经猜过了，试试别的词。', true);
+          input.focus();
+          return;
+        }
+        if (guess === words[round.target].word) {
+          acceptGuess(guess, 100);
+        } else if (!/[\p{L}\p{N}]/u.test(guess)) {
+          acceptGuess(guess, 0, '这个输入没有可用于比较的文字或数字。', '线索不足');
+        } else if (modelUnavailable) {
+          useFallback(guess);
+        } else {
+          requestScore(guess);
+        }
+      });
+      get('new-round').addEventListener('click', () => {
+        if (window.confirm('要换一个词并重新开始吗？本局记录会清空。')) {
+          startRound();
+          input.focus();
+        }
+      });
+
+      showBest();
+      startRound();
+      if (modelUnavailable) modelStatus.textContent = '当前使用内置估分。通过支持 Web Worker 的 HTTP 页面可启用语义模型。';
+    })();
+  </script>
+</body>
+</html>

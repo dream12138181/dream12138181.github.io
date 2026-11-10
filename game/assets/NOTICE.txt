@@ -1,0 +1,15 @@
+随机猜词 · 本地语义评分资源
+
+BGE small zh v1.5 (MIT)
+  原始模型 https://huggingface.co/BAAI/bge-small-zh-v1.5
+  INT8 ONNX 和分词器 https://huggingface.co/Xenova/bge-small-zh-v1.5/tree/75c43b0
+  model_int8.onnx SHA-256 b9837c19ce154ff0726d398ee77abbc03a7faf0476c6f93016c84e531be7ebb5
+  许可证 models/bge-small-zh-v1.5/LICENSE.txt
+
+Transformers.js 3.8.1 (Apache-2.0)
+  浏览器构建来自 https://registry.npmjs.org/@huggingface/transformers/-/transformers-3.8.1.tgz
+  许可证 runtime/Transformers-LICENSE.txt
+
+ONNX Runtime Web 1.22.0-dev.20250409-89f8206ba4 (MIT)
+  WASM 和加载器与上述 Transformers.js 浏览器构建配套。
+  许可证与第三方声明见 runtime/ONNXRuntime-LICENSE.txt 和 runtime/ONNXRuntime-ThirdPartyNotices.txt。
